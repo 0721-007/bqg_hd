@@ -20,7 +20,7 @@ ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/dist ./dist
 COPY --from=base /app/supabase ./supabase
-COPY --from=base /app/uploads ./uploads
+RUN mkdir -p /app/uploads
 EXPOSE 3000
 CMD ["node", "dist/server.js"]
 

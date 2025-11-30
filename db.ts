@@ -28,9 +28,17 @@ if (!connectionString) {
   throw new Error('数据库连接未配置，请设置 DATABASE_URL 或 PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE')
 }
 
+function resolveSSL(cs: string): boolean | { rejectUnauthorized: false } | undefined {
+  const mode = (process.env.PGSSLMODE || process.env.DB_SSL || process.env.POSTGRES_SSL || '').toLowerCase()
+  if (mode === 'require' || mode === 'true' || mode === 'on') return { rejectUnauthorized: false }
+  if (mode === 'disable' || mode === 'false' || mode === 'off') return false
+  if (/sslmode=require|ssl=true/i.test(cs)) return { rejectUnauthorized: false }
+  return false
+}
+
 export const pool = new Pool({
   connectionString,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+  ssl: resolveSSL(connectionString),
 })
 
 export async function initDb() {

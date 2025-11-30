@@ -69,31 +69,37 @@ export const getContentById = async (req: Request, res: Response) => {
 }
 
 export const createContent = async (req: Request, res: Response) => {
+  const client = await pool.connect()
   try {
-    const { title, description, content_type_id, metadata, tags, cover_image } = req.body
-    const typeResult = await pool.query('SELECT id FROM content_types WHERE id = $1', [content_type_id])
-    if (typeResult.rows.length === 0) { return res.status(400).json({ error: '内容类型不存在' }) }
-    const result = await pool.query(
-      `INSERT INTO contents (title, description, content_type_id, metadata, cover_image) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [title, description, content_type_id, JSON.stringify(metadata || {}), cover_image]
+    const { title, description, content_type_id, metadata, tags, cover_image, status } = req.body
+    await client.query('BEGIN')
+    const typeResult = await client.query('SELECT id FROM content_types WHERE id = $1', [content_type_id])
+    if (typeResult.rows.length === 0) { await client.query('ROLLBACK'); return res.status(400).json({ error: '内容类型不存在' }) }
+    const result = await client.query(
+      `INSERT INTO contents (title, description, content_type_id, metadata, cover_image, status) 
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'draft')) RETURNING *`,
+      [title, description, content_type_id, JSON.stringify(metadata || {}), cover_image, status]
     )
     const content = result.rows[0]
     if (tags && tags.length > 0) {
       for (const tagName of tags) {
-        let tagResult = await pool.query('SELECT id FROM tags WHERE name = $1', [tagName])
+        let tagResult = await client.query('SELECT id FROM tags WHERE name = $1', [tagName])
         let tagId
         if (tagResult.rows.length === 0) {
-          const newTagResult = await pool.query('INSERT INTO tags (name) VALUES ($1) RETURNING id', [tagName])
+          const newTagResult = await client.query('INSERT INTO tags (name) VALUES ($1) RETURNING id', [tagName])
           tagId = newTagResult.rows[0].id
         } else { tagId = tagResult.rows[0].id }
-        await pool.query('INSERT INTO content_tags (content_id, tag_id) VALUES ($1, $2)', [content.id, tagId])
+        await client.query('INSERT INTO content_tags (content_id, tag_id) VALUES ($1, $2)', [content.id, tagId])
       }
     }
+    await client.query('COMMIT')
     res.status(201).json(content)
-  } catch (error) {
+  } catch (error: any) {
+    await client.query('ROLLBACK')
     console.error('创建内容失败:', error)
-    res.status(500).json({ error: '创建内容失败' })
+    res.status(500).json({ error: error?.message || '创建内容失败' })
+  } finally {
+    client.release()
   }
 }
 

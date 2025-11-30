@@ -7,7 +7,9 @@ import { initDb } from './db'
 dotenv.config()
 
 const app = express()
-app.use(cors())
+const corsOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+const corsAllowCredentials = (process.env.CORS_ALLOW_CREDENTIALS || '').toLowerCase() === 'true'
+app.use(cors({ origin: corsOrigins.length ? corsOrigins : true, credentials: corsAllowCredentials }))
 app.use(express.json({ limit: '10mb' }))
 
 app.get('/health', (req: Request, res: Response) => {

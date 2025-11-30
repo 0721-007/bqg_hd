@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { authenticateAdmin } from './middleware'
 
-import { getContentTypes, getContentTypeById } from './content-types'
+import { getContentTypes, getContentTypeById, createContentType, updateContentType, deleteContentType } from './content-types'
 
 import { 
   getContents, 
@@ -25,6 +25,9 @@ const router = Router()
 
 router.get('/content-types', getContentTypes)
 router.get('/content-types/:id', getContentTypeById)
+router.post('/content-types', authenticateAdmin, createContentType)
+router.put('/content-types/:id', authenticateAdmin, updateContentType)
+router.delete('/content-types/:id', authenticateAdmin, deleteContentType)
 
 router.get('/contents', getContents)
 router.get('/contents/:id', getContentById)

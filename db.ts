@@ -2,10 +2,30 @@ import { Pool } from 'pg'
 import fs from 'fs'
 import path from 'path'
 
-const connectionString = process.env.DATABASE_URL
+function getConnectionString(): string | null {
+  const candidates = [
+    process.env.DATABASE_URL,
+    process.env.POSTGRES_URL,
+    process.env.POSTGRESQL_URL,
+  ]
+  for (const u of candidates) {
+    if (u && u.trim()) return u.trim()
+  }
+  const host = process.env.PGHOST || process.env.POSTGRES_HOST
+  const port = process.env.PGPORT || process.env.POSTGRES_PORT
+  const user = process.env.PGUSER || process.env.POSTGRES_USER
+  const password = process.env.PGPASSWORD || process.env.POSTGRES_PASSWORD
+  const database = process.env.PGDATABASE || process.env.POSTGRES_DB
+  if (host && port && user && password && database) {
+    return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`
+  }
+  return null
+}
+
+const connectionString = getConnectionString()
 
 if (!connectionString) {
-  throw new Error('DATABASE_URL 未配置')
+  throw new Error('数据库连接未配置，请设置 DATABASE_URL 或 PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE')
 }
 
 export const pool = new Pool({

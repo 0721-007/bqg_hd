@@ -55,6 +55,38 @@ export async function initDb() {
       await client.query("SELECT setval(pg_get_serial_sequence('chapters','id'), COALESCE((SELECT MAX(id) FROM chapters), 1))")
       await client.query("SELECT setval(pg_get_serial_sequence('tags','id'), COALESCE((SELECT MAX(id) FROM tags), 1))")
       console.log('数据库初始化完成')
+    } else {
+      const typeCount = await client.query('SELECT COUNT(*)::int AS cnt FROM content_types')
+      if ((typeCount.rows[0]?.cnt ?? 0) === 0) {
+        await client.query(`INSERT INTO content_types (name, display_name, description, metadata_schema) VALUES 
+          ('novel', '小说', '文字小说内容', '{
+            "author": {"type": "string", "required": true},
+            "genre": {"type": "string", "required": false},
+            "total_chapters": {"type": "number", "required": false}
+          }'),
+          ('comic', '漫画', '图像漫画内容', '{
+            "author": {"type": "string", "required": true},
+            "artist": {"type": "string", "required": true},
+            "total_episodes": {"type": "number", "required": false}
+          }'),
+          ('audio', '音频', '音频内容', '{
+            "narrator": {"type": "string", "required": true},
+            "duration": {"type": "number", "required": false},
+            "file_format": {"type": "string", "required": false}
+          }')`)
+        console.log('已填充默认内容类型')
+      }
+      const tagCount = await client.query('SELECT COUNT(*)::int AS cnt FROM tags')
+      if ((tagCount.rows[0]?.cnt ?? 0) === 0) {
+        await client.query(`INSERT INTO tags (name, color) VALUES 
+          ('玄幻', '#9b59b6'),
+          ('都市', '#3498db'),
+          ('科幻', '#e74c3c'),
+          ('言情', '#e91e63'),
+          ('历史', '#f39c12'),
+          ('悬疑', '#34495e')`)
+        console.log('已填充默认标签')
+      }
     }
   } finally {
     client.release()

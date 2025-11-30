@@ -50,7 +50,7 @@ export const getContentById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
     const query = `
-      SELECT c*, ct.name as content_type_name, ct.display_name as content_type_display,
+      SELECT c.*, ct.name as content_type_name, ct.display_name as content_type_display,
              array_agg(t.name) as tags
       FROM contents c
       JOIN content_types ct ON c.content_type_id = ct.id

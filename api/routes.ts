@@ -31,14 +31,14 @@ router.delete('/content-types/:id', authenticateAdmin, deleteContentType)
 
 router.get('/contents', getContents)
 router.get('/contents/:id', getContentById)
-router.post('/contents', authenticateAdmin, createContent)
-router.put('/contents/:id', authenticateAdmin, updateContent)
+router.post('/contents', createContent)
+router.put('/contents/:id', updateContent)
 router.delete('/contents/:id', authenticateAdmin, deleteContent)
 
 router.get('/contents/:contentId/chapters', getChapters)
 router.get('/contents/:contentId/chapters/:chapterId', getChapterById)
-router.post('/contents/:contentId/chapters', authenticateAdmin, createChapter)
-router.put('/contents/:contentId/chapters/:chapterId', authenticateAdmin, updateChapter)
+router.post('/contents/:contentId/chapters', createChapter)
+router.put('/contents/:contentId/chapters/:chapterId', updateChapter)
 router.delete('/contents/:contentId/chapters/:chapterId', authenticateAdmin, deleteChapter)
 
 router.get('/tags', getTags)

@@ -1,6 +1,7 @@
 {
   "name": "bqg-hd",
   "version": "1.2.4",
+  "release": "release(backend): v1.2.4 修复内容详情 SQL 与 Docker 上传目录",
   "private": true,
   "type": "commonjs",
   "scripts": {

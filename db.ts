@@ -24,10 +24,6 @@ function getConnectionString(): string | null {
 
 const connectionString = getConnectionString()
 
-if (!connectionString) {
-  throw new Error('数据库连接未配置，请设置 DATABASE_URL 或 PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE')
-}
-
 function resolveSSL(cs: string): boolean | { rejectUnauthorized: false } | undefined {
   const mode = (process.env.PGSSLMODE || process.env.DB_SSL || process.env.POSTGRES_SSL || '').toLowerCase()
   if (mode === 'require' || mode === 'true' || mode === 'on') return { rejectUnauthorized: false }
@@ -37,11 +33,18 @@ function resolveSSL(cs: string): boolean | { rejectUnauthorized: false } | undef
 }
 
 export const pool = new Pool({
-  connectionString,
-  ssl: resolveSSL(connectionString),
+  connectionString: connectionString || undefined,
+  ssl: resolveSSL(connectionString || ''),
+  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 30000,
+  max: 5,
 })
 
 export async function initDb() {
+  if (!connectionString) {
+    console.warn('数据库连接未配置，跳过初始化')
+    return
+  }
   const client = await pool.connect()
   try {
     const check = await client.query("SELECT to_regclass('public.content_types') AS exists")

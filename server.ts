@@ -21,8 +21,26 @@ if (storageTarget === 'local') {
   app.use('/uploads', express.static(uploadsDir))
 }
 
+const pkgJsonPath = path.resolve(process.cwd(), 'package.json')
+let appVersion = 'unknown'
+try {
+  const s = fs.readFileSync(pkgJsonPath, 'utf-8')
+  const pkg = JSON.parse(s)
+  if (pkg && typeof pkg.version === 'string') appVersion = pkg.version
+} catch {}
+
+let dbReady = false
+
 app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok' })
+  res.json({ status: 'ok', dbReady })
+})
+
+app.get('/', (req: Request, res: Response) => {
+  res.send('ok')
+})
+
+app.get('/version', (req: Request, res: Response) => {
+  res.json({ version: appVersion })
 })
 
 app.use('/api', router)
@@ -30,14 +48,22 @@ app.post('/api/upload', ...uploadImageHandlers)
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000
 
-initDb()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`API server listening on port ${PORT}`)
-    })
+function startListen() {
+  app.listen(PORT, () => {
+    console.log(`API server listening on port ${PORT}`)
   })
-  .catch((err) => {
+}
+
+async function initDbWithRetry() {
+  try {
+    await initDb()
+    dbReady = true
+  } catch (err) {
     console.error('数据库初始化失败:', err)
-    process.exit(1)
-  })
+    setTimeout(() => initDbWithRetry(), 10000)
+  }
+}
+
+startListen()
+initDbWithRetry()
 

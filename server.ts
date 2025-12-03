@@ -14,9 +14,12 @@ const corsOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim(
 const corsAllowCredentials = (process.env.CORS_ALLOW_CREDENTIALS || '').toLowerCase() === 'true'
 app.use(cors({ origin: corsOrigins.length ? corsOrigins : true, credentials: corsAllowCredentials }))
 app.use(express.json({ limit: '10mb' }))
-const uploadsDir = path.resolve(process.cwd(), 'uploads')
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
-app.use('/uploads', express.static(uploadsDir))
+const storageTarget = (process.env.STORAGE_TARGET || 'local').toLowerCase()
+if (storageTarget === 'local') {
+  const uploadsDir = path.resolve(process.cwd(), 'uploads')
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+  app.use('/uploads', express.static(uploadsDir))
+}
 
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok' })

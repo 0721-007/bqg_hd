@@ -45,8 +45,19 @@ export const createChapter = async (req: Request, res: Response) => {
   try {
     const { contentId } = req.params
     const { chapter_number, title, content_data, metadata } = req.body
-    const contentResult = await pool.query('SELECT id FROM contents WHERE id = $1', [contentId])
+    const user = (req as any).user as { id: number; username: string; role?: string } | undefined
+    if (!user || !user.id) {
+      return res.status(401).json({ error: '未登录' })
+    }
+    const contentResult = await pool.query('SELECT id, author_user_id FROM contents WHERE id = $1', [contentId])
     if (contentResult.rows.length === 0) { return res.status(400).json({ error: '内容不存在' }) }
+    const content = contentResult.rows[0]
+    if (content.author_user_id && content.author_user_id !== user.id) {
+      return res.status(403).json({ error: '无权为该内容创建章节' })
+    }
+    if (!content.author_user_id) {
+      await pool.query('UPDATE contents SET author_user_id = $1, author_username = $2 WHERE id = $3', [user.id, user.username, contentId])
+    }
     const existingResult = await pool.query('SELECT id FROM chapters WHERE content_id = $1 AND chapter_number = $2', [contentId, chapter_number])
     if (existingResult.rows.length > 0) { return res.status(400).json({ error: '章节编号已存在' }) }
     const result = await pool.query(
@@ -65,6 +76,19 @@ export const updateChapter = async (req: Request, res: Response) => {
   try {
     const { contentId, chapterId } = req.params
     const { chapter_number, title, content_data, metadata, published_at } = req.body
+    const user = (req as any).user as { id: number; username: string; role?: string } | undefined
+    if (!user || !user.id) {
+      return res.status(401).json({ error: '未登录' })
+    }
+    const contentResult = await pool.query('SELECT id, author_user_id FROM contents WHERE id = $1', [contentId])
+    if (contentResult.rows.length === 0) { return res.status(400).json({ error: '内容不存在' }) }
+    const content = contentResult.rows[0]
+    if (content.author_user_id && content.author_user_id !== user.id) {
+      return res.status(403).json({ error: '无权修改该内容的章节' })
+    }
+    if (!content.author_user_id) {
+      await pool.query('UPDATE contents SET author_user_id = $1, author_username = $2 WHERE id = $3', [user.id, user.username, contentId])
+    }
     if (chapter_number !== undefined) {
       const existingResult = await pool.query('SELECT id FROM chapters WHERE content_id = $1 AND chapter_number = $2 AND id != $3', [contentId, chapter_number, chapterId])
       if (existingResult.rows.length > 0) { return res.status(400).json({ error: '章节编号已存在' }) }

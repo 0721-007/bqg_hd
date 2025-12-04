@@ -72,13 +72,17 @@ export const createContent = async (req: Request, res: Response) => {
   const client = await pool.connect()
   try {
     const { title, description, content_type_id, metadata, tags, cover_image, status } = req.body
+    const user = (req as any).user as { id: number; username: string; role?: string } | undefined
+    if (!user || !user.id) {
+      return res.status(401).json({ error: '未登录' })
+    }
     await client.query('BEGIN')
     const typeResult = await client.query('SELECT id FROM content_types WHERE id = $1', [content_type_id])
     if (typeResult.rows.length === 0) { await client.query('ROLLBACK'); return res.status(400).json({ error: '内容类型不存在' }) }
     const result = await client.query(
-      `INSERT INTO contents (title, description, content_type_id, metadata, cover_image, status) 
-       VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'draft')) RETURNING *`,
-      [title, description, content_type_id, JSON.stringify(metadata || {}), cover_image, status]
+      `INSERT INTO contents (title, description, content_type_id, metadata, cover_image, status, author_user_id, author_username) 
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'draft'), $7, $8) RETURNING *`,
+      [title, description, content_type_id, JSON.stringify(metadata || {}), cover_image, status, user.id, user.username]
     )
     const content = result.rows[0]
     if (tags && tags.length > 0) {
@@ -107,13 +111,27 @@ export const updateContent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
     const { title, description, metadata, tags, cover_image, status } = req.body
+    const user = (req as any).user as { id: number; username: string; role?: string } | undefined
+    if (!user || !user.id) {
+      return res.status(401).json({ error: '未登录' })
+    }
+
+    const existing = await pool.query('SELECT id, author_user_id FROM contents WHERE id = $1', [id])
+    if (existing.rows.length === 0) { return res.status(404).json({ error: '内容不存在' }) }
+    const row = existing.rows[0]
+    if (row.author_user_id && row.author_user_id !== user.id) {
+      return res.status(403).json({ error: '无权修改该内容' })
+    }
+
     const result = await pool.query(
       `UPDATE contents 
-       SET title = $1, description = $2, metadata = $3, cover_image = $4, status = $5, updated_at = CURRENT_TIMESTAMP
+       SET title = $1, description = $2, metadata = $3, cover_image = $4, status = $5,
+           author_user_id = COALESCE(author_user_id, $7),
+           author_username = COALESCE(author_username, $8),
+           updated_at = CURRENT_TIMESTAMP
        WHERE id = $6 RETURNING *`,
-      [title, description, JSON.stringify(metadata || {}), cover_image, status, id]
+      [title, description, JSON.stringify(metadata || {}), cover_image, status, id, user.id, user.username]
     )
-    if (result.rows.length === 0) { return res.status(404).json({ error: '内容不存在' }) }
     if (tags !== undefined) {
       await pool.query('DELETE FROM content_tags WHERE content_id = $1', [id])
       if (tags.length > 0) {

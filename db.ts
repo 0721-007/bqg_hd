@@ -101,6 +101,12 @@ export async function initDb() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `)
+
+    await client.query(`
+      ALTER TABLE contents
+      ADD COLUMN IF NOT EXISTS author_user_id INTEGER REFERENCES users(id),
+      ADD COLUMN IF NOT EXISTS author_username VARCHAR(50)
+    `)
   } finally {
     client.release()
   }

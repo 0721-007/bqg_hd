@@ -21,26 +21,14 @@ if (storageTarget === 'local') {
   app.use('/uploads', express.static(uploadsDir))
 }
 
-const pkgJsonPath = path.resolve(process.cwd(), 'package.json')
-let appVersion = 'unknown'
-try {
-  const s = fs.readFileSync(pkgJsonPath, 'utf-8')
-  const pkg = JSON.parse(s)
-  if (pkg && typeof pkg.version === 'string') appVersion = pkg.version
-} catch {}
-
 let dbReady = false
 
-app.get('/health', (req: Request, res: Response) => {
+app.get('/', (req: Request, res: Response) => {
   res.json({ status: 'ok', dbReady })
 })
 
-app.get('/', (req: Request, res: Response) => {
-  res.send('ok')
-})
-
-app.get('/version', (req: Request, res: Response) => {
-  res.json({ version: appVersion })
+app.get('/health', (req: Request, res: Response) => {
+  res.json({ status: 'ok', dbReady })
 })
 
 app.use('/api', router)

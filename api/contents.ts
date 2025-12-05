@@ -29,7 +29,12 @@ function isAdminRequest(req: Request): boolean {
 
 export const getContents = async (req: Request, res: Response) => {
   try {
-    const { type, status, tag } = req.query as any
+    const { type, status, tag, mine } = req.query as any
+    const onlyMine = mine === '1' || mine === 'true'
+    const userForMine = onlyMine ? getOptionalUser(req) : null
+    if (onlyMine && !userForMine) {
+      return fail(res, 401, '未登录')
+    }
     const { page, limit } = parsePagination(req, 20, 100)
     let query = `
       SELECT c.*, ct.name as content_type_name, ct.display_name as content_type_display,
@@ -45,6 +50,7 @@ export const getContents = async (req: Request, res: Response) => {
     if (type) { query += ` AND ct.name = $${paramIndex}`; params.push(type); paramIndex++ }
     if (status) { query += ` AND c.status = $${paramIndex}`; params.push(status); paramIndex++ }
     if (tag) { query += ` AND t.name = $${paramIndex}`; params.push(tag); paramIndex++ }
+    if (onlyMine && userForMine) { query += ` AND c.author_user_id = $${paramIndex}`; params.push(userForMine.id); paramIndex++ }
     query += ` GROUP BY c.id, ct.id ORDER BY c.created_at DESC`
     const offset = (page - 1) * limit
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`
@@ -63,7 +69,8 @@ export const getContents = async (req: Request, res: Response) => {
     let countParamIndex = 1
     if (type) { countQuery += ` AND ct.name = $${countParamIndex}`; countParams.push(type); countParamIndex++ }
     if (status) { countQuery += ` AND c.status = $${countParamIndex}`; countParams.push(status); countParamIndex++ }
-    if (tag) { countQuery += ` AND t.name = $${countParamIndex}`; countParams.push(tag) }
+    if (tag) { countQuery += ` AND t.name = $${countParamIndex}`; countParams.push(tag); countParamIndex++ }
+    if (onlyMine && userForMine) { countQuery += ` AND c.author_user_id = $${countParamIndex}`; countParams.push(userForMine.id); countParamIndex++ }
     const countResult = await pool.query(countQuery, countParams)
     const total = Number(countResult.rows[0].count)
     return ok(res, { data: result.rows, pagination: { page, limit, total, pages: Math.ceil(total / limit) } }, '获取内容列表成功')

@@ -12,7 +12,6 @@ COPY api ./api
 COPY db.ts ./db.ts
 COPY server.ts ./server.ts
 COPY supabase ./supabase
-COPY .env ./
 RUN npm run build
 
 FROM node:20-alpine AS runner
@@ -22,7 +21,6 @@ ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/dist ./dist
 COPY --from=base /app/supabase ./supabase
-COPY --from=base /app/.env ./
 RUN mkdir -p /app/uploads
 EXPOSE 3000
 CMD ["node", "dist/server.js"]

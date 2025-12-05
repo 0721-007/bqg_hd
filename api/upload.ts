@@ -3,7 +3,6 @@ import multer, { StorageEngine } from 'multer'
 import path from 'path'
 import fs from 'fs'
 import OSS from 'ali-oss'
-import { authenticateAdmin } from './middleware'
 
 const target = (process.env.STORAGE_TARGET || 'local').toLowerCase()
 
@@ -40,7 +39,7 @@ function buildOssClient() {
   return new OSS(options)
 }
 
-export const uploadImageHandlers = [authenticateAdmin, upload.single('file'), async (req: Request, res: Response) => {
+export const uploadImageHandlers = [upload.single('file'), async (req: Request, res: Response) => {
   const file = (req as any).file
   if (!file) return res.status(400).json({ error: '未接收到文件' })
 
